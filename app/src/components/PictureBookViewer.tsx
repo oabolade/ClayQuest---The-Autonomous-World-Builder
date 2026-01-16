@@ -233,7 +233,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-[#FFF8E1]"
+      className="h-full flex flex-col bg-[#FFF8E1] overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -241,7 +241,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
       <audio ref={audioRef} />
 
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-white/80 backdrop-blur-sm">
+      <div className="flex-shrink-0 flex items-center justify-between p-3 bg-white/80 backdrop-blur-sm">
         <h1 className="text-xl font-bold text-[#4E342E] truncate">{story.title}</h1>
         <button
           onClick={toggleAudio}
@@ -270,9 +270,9 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
+      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0">
         {/* Illustration */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-h-0">
           <img
             src={page.imageUrl}
             alt={`Story page ${currentPage + 1}`}
@@ -306,8 +306,8 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
 
         {/* Text area */}
         {showText && (
-          <div className="bg-white p-4 shadow-lg animate-slide-up">
-            <p className="text-lg md:text-xl text-[#4E342E] text-center leading-relaxed">
+          <div className="flex-shrink-0 bg-white p-3 shadow-lg animate-slide-up max-h-[20vh] overflow-y-auto">
+            <p className="text-base md:text-lg text-[#4E342E] text-center leading-relaxed">
               {page.text}
             </p>
           </div>
@@ -325,7 +325,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
       </div>
 
       {/* Page indicators */}
-      <div className="flex justify-center gap-2 py-4 bg-white/80">
+      <div className="flex-shrink-0 flex justify-center gap-2 py-2 bg-white/80">
         {story.pages.map((_, index) => (
           <button
             key={index}
@@ -341,7 +341,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
 
       {/* Last page actions */}
       {isLastPage && (
-        <div className="p-4 bg-gradient-to-t from-[#FFE0B2] to-transparent animate-fade-in">
+        <div className="flex-shrink-0 p-3 bg-gradient-to-t from-[#FFE0B2] to-transparent animate-fade-in">
           <div className="text-center mb-4">
             <span className="text-4xl">🎉</span>
             <h2 className="text-2xl font-bold text-[#4E342E]">The End!</h2>

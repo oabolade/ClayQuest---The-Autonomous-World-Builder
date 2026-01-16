@@ -121,7 +121,7 @@ export function ClayQuestApp() {
   }, []);
 
   return (
-    <main className="min-h-screen">
+    <main className="h-screen h-[100dvh] overflow-hidden">
       {currentScreen === "welcome" && <WelcomeScreen onStart={handleStart} />}
 
       {currentScreen === "capture" && (
