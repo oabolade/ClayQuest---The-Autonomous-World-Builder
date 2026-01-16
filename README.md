@@ -1,5 +1,4 @@
-# 
-
+# ClayQuest - The Autonomous World Builder
 
 An AI-powered agent that autonomously generates imaginative 3D landscapes from natural language descriptions.
 

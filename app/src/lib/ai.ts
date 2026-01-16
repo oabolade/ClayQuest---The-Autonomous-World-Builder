@@ -1,8 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Story } from "@/types";
+import {
+  generateImage,
+  getConfiguredProvider,
+  getProviderStatus,
+} from "./image-providers";
 
 const anthropic = new Anthropic();
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 interface StoryOutline {
   title: string;
@@ -95,52 +99,35 @@ IMPORTANT for imagePrompt:
   };
 }
 
-export async function generateImageWithImagen(prompt: string): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    console.warn("No Gemini API key, using placeholder");
-    return generatePlaceholderImage(prompt);
-  }
+/**
+ * Generate an image using the configured provider.
+ * Provider is selected via IMAGE_PROVIDER env var (default: freepik).
+ * Supports automatic fallback via IMAGE_PROVIDER_FALLBACK env var.
+ */
+export async function generateImageWithProvider(prompt: string): Promise<string> {
+  const providerType = getConfiguredProvider();
+  console.log(`Using image provider: ${providerType}`);
+  console.log(`Provider status:`, getProviderStatus());
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: "4:3",
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Imagen API error:", error);
-      return generatePlaceholderImage(prompt);
-    }
-
-    const data = await response.json();
-
-    if (data.predictions && data.predictions[0]?.bytesBase64Encoded) {
-      const base64 = data.predictions[0].bytesBase64Encoded;
-      return `data:image/png;base64,${base64}`;
-    }
-
-    console.warn("No image in Imagen response, using placeholder");
-    return generatePlaceholderImage(prompt);
+    const result = await generateImage({
+      prompt,
+      aspectRatio: "4:3",
+    });
+    return result.url;
   } catch (error) {
-    console.error("Imagen generation error:", error);
-    return generatePlaceholderImage(prompt);
+    console.error("Image generation error:", error);
+    // Return placeholder as last resort
+    const seed = Math.abs(hashCode(prompt));
+    return `https://picsum.photos/seed/${seed}/800/600`;
   }
 }
 
-function generatePlaceholderImage(prompt: string): string {
-  const seed = Math.abs(hashCode(prompt));
-  return `https://picsum.photos/seed/${seed}/800/600`;
+/**
+ * @deprecated Use generateImageWithProvider instead
+ */
+export async function generateImageWithImagen(prompt: string): Promise<string> {
+  return generateImageWithProvider(prompt);
 }
 
 export async function generateStory(imageBase64: string): Promise<Story> {
@@ -150,12 +137,12 @@ export async function generateStory(imageBase64: string): Promise<Story> {
   console.log("Story outline created:", outline.title);
 
   // Step 2: Generate images for each page (in parallel for speed)
-  console.log("Step 2: Generating images with Imagen 4.0...");
+  console.log(`Step 2: Generating images with ${getConfiguredProvider()}...`);
   const imagePromises = outline.pages.map((page, index) => {
     // Combine character description with scene for consistent imagery
     const fullPrompt = `Children's book illustration style, colorful and whimsical: ${outline.characterDescription} - ${page.imagePrompt}. Friendly, magical atmosphere, soft lighting, suitable for ages 4-8.`;
     console.log(`  Generating image ${index + 1}...`);
-    return generateImageWithImagen(fullPrompt);
+    return generateImageWithProvider(fullPrompt);
   });
 
   const imageUrls = await Promise.all(imagePromises);

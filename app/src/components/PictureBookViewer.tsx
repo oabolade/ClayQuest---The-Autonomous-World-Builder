@@ -35,7 +35,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, pageIndex }),
       });
 
       console.log("[Client] TTS response status:", response.status);
@@ -45,24 +45,23 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
         return null;
       }
 
-      const contentType = response.headers.get("content-type");
-      console.log("[Client] TTS content-type:", contentType);
+      const data = await response.json();
 
-      if (contentType?.includes("application/json")) {
-        // Server returned JSON, meaning we should use Web Speech
-        console.log("[Client] Got JSON response, using Web Speech");
+      // Check if server says to use Web Speech
+      if (data.useWebSpeech) {
+        console.log("[Client] Server says use Web Speech");
         return null;
       }
 
-      // Got audio data
-      const blob = await response.blob();
-      console.log("[Client] Got audio blob, size:", blob.size);
-      const url = URL.createObjectURL(blob);
+      // Got audio URL from server
+      if (data.audioUrl) {
+        console.log("[Client] Got audio URL:", data.audioUrl);
+        // Cache the audio URL
+        setAudioCache((prev) => new Map(prev).set(pageIndex, data.audioUrl));
+        return data.audioUrl;
+      }
 
-      // Cache the audio URL
-      setAudioCache((prev) => new Map(prev).set(pageIndex, url));
-
-      return url;
+      return null;
     } catch (error) {
       console.error("[Client] Audio fetch error:", error);
       return null;
@@ -204,12 +203,7 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
     return () => audio.removeEventListener("ended", handleEnded);
   }, []);
 
-  // Cleanup audio URLs on unmount
-  useEffect(() => {
-    return () => {
-      audioCache.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // No cleanup needed - audio URLs are now server paths, not blob URLs
 
   // Handle swipe gestures
   const touchStartX = useRef<number>(0);
