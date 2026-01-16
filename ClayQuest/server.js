@@ -50,7 +50,7 @@ app.post('/api/analyze-image', async (req, res) => {
       try {
         response = await anthropic.messages.create({
           model: model,
-          max_tokens: 1024,
+          max_tokens: 2048,
           messages: [
             {
               role: 'user',
@@ -65,7 +65,18 @@ app.post('/api/analyze-image', async (req, res) => {
                 },
                 {
                   type: 'text',
-                  text: 'Please provide a detailed description of what you see in this image. Describe the objects, people, setting, colors, and any notable details.',
+                  text: `You are analyzing an air-dry clay object made by a child, ideally on a clean background. Analyze this clay creation and provide character lore information in JSON format.
+
+Please analyze the image and return a JSON object with the following structure:
+{
+  "name": "A creative character name based on the object",
+  "color": "Primary colors observed (e.g., 'bright red and blue', 'pastel pink')",
+  "shape": "Description of the shape and form (e.g., 'round and chubby', 'tall and slender', 'irregular blob')",
+  "characterTraits": ["trait1", "trait2", "trait3"],
+  "tone": "The voice/tone this character should have (e.g., 'playful and energetic', 'gentle and shy', 'bold and adventurous')"
+}
+
+Focus on the unique characteristics that make this clay creation special. The character traits should reflect the personality that emerges from the object's appearance. Return ONLY valid JSON, no additional text.`,
                 },
               ],
             },
@@ -92,7 +103,55 @@ app.post('/api/analyze-image', async (req, res) => {
     );
 
     if (textContent && textContent.type === 'text') {
-      res.json({ description: textContent.text });
+      console.log('Claude response text (first 500 chars):', textContent.text.substring(0, 500));
+      
+      try {
+        let jsonText = textContent.text.trim();
+        
+        // Remove markdown code blocks if present
+        jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        
+        // Try to find JSON object in the text (in case there's extra text)
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          console.log('Found JSON match, attempting to parse...');
+          const characterData = JSON.parse(jsonMatch[0]);
+          console.log('Successfully parsed character data:', characterData);
+          res.json({ characterData });
+        } else {
+          // Try parsing the whole text
+          console.log('No JSON match, trying to parse entire text as JSON...');
+          const characterData = JSON.parse(jsonText);
+          console.log('Successfully parsed character data:', characterData);
+          res.json({ characterData });
+        }
+      } catch (parseError) {
+        // If parsing fails, return the raw text (fallback)
+        console.error('Failed to parse JSON response:', parseError.message);
+        console.error('Raw response text (first 1000 chars):', textContent.text.substring(0, 1000));
+        console.error('Full response text length:', textContent.text.length);
+        
+        // Try one more time with a more aggressive JSON extraction
+        try {
+          // Look for JSON that might be embedded in text
+          const aggressiveMatch = textContent.text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+          if (aggressiveMatch) {
+            console.log('Found JSON with aggressive matching, attempting to parse...');
+            const characterData = JSON.parse(aggressiveMatch[0]);
+            console.log('Successfully parsed with aggressive matching:', characterData);
+            res.json({ characterData });
+            return;
+          }
+        } catch (secondTryError) {
+          console.error('Aggressive matching also failed:', secondTryError.message);
+        }
+        
+        res.json({ 
+          characterData: null,
+          rawResponse: textContent.text,
+          description: textContent.text // Also include as description for backward compatibility
+        });
+      }
     } else {
       res.status(500).json({ error: 'No description received from API' });
     }

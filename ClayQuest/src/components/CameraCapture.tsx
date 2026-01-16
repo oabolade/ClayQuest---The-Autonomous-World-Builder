@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './CameraCapture.css';
+import CharacterLoreDisplay from './CharacterLoreDisplay';
+import type { CharacterData } from '../types/character';
 
 interface CameraCaptureProps {
   apiUrl?: string;
@@ -8,7 +10,8 @@ interface CameraCaptureProps {
 function CameraCapture({ apiUrl }: CameraCaptureProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const [characterData, setCharacterData] = useState<CharacterData | null>(null);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -87,7 +90,8 @@ function CameraCapture({ apiUrl }: CameraCaptureProps) {
 
     setIsAnalyzing(true);
     setError(null);
-    setDescription(null);
+    setCharacterData(null);
+    setRawResponse(null);
 
     try {
       // Convert base64 to blob
@@ -124,10 +128,91 @@ function CameraCapture({ apiUrl }: CameraCaptureProps) {
 
       const data = await response.json();
       
-      if (data.description) {
-        setDescription(data.description);
+      console.log('API Response:', data); // Debug log
+      
+      // Try multiple ways to extract character data
+      let extractedData = null;
+      
+      // Method 1: Direct characterData field
+      if (data.characterData) {
+        extractedData = data.characterData;
+      }
+      // Method 2: Try rawResponse field
+      else if (data.rawResponse) {
+        try {
+          let jsonText = data.rawResponse.trim();
+          jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+          const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+          extractedData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(jsonText);
+        } catch (err) {
+          console.warn('Failed to parse rawResponse:', err);
+        }
+      }
+      // Method 3: Try description field (legacy or fallback)
+      else if (data.description) {
+        console.log('Attempting to parse description field:', data.description.substring(0, 200));
+        try {
+          let jsonText = data.description.trim();
+          // Remove markdown code blocks if present
+          jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+          
+          // Try to find JSON object in the text (handles cases with extra text)
+          const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            console.log('Found JSON match, attempting to parse...');
+            extractedData = JSON.parse(jsonMatch[0]);
+            console.log('Successfully parsed character data:', extractedData);
+          } else {
+            // Try parsing the whole text as JSON
+            console.log('No JSON match found, trying to parse entire text as JSON...');
+            extractedData = JSON.parse(jsonText);
+            console.log('Successfully parsed character data:', extractedData);
+          }
+        } catch (err) {
+          console.error('Failed to parse description as JSON:', err);
+          console.error('Description content:', data.description);
+          // Don't set error here, let it fall through to show raw response
+          setRawResponse(data.description);
+        }
+      }
+      // Method 4: Check if the response itself is the character data
+      else if (data.name && data.color && data.shape && data.characterTraits && data.tone) {
+        extractedData = data;
+      }
+      
+      if (extractedData) {
+        // Validate the extracted data has required fields
+        if (extractedData.name && extractedData.color && extractedData.shape && 
+            Array.isArray(extractedData.characterTraits) && extractedData.tone) {
+          setCharacterData(extractedData);
+          setError(null); // Clear any previous errors
+        } else {
+          console.error('Extracted data missing required fields:', extractedData);
+          console.error('Missing fields:', {
+            name: !!extractedData.name,
+            color: !!extractedData.color,
+            shape: !!extractedData.shape,
+            characterTraits: Array.isArray(extractedData.characterTraits),
+            tone: !!extractedData.tone
+          });
+          setError('Character data received but missing required fields. Check console for details.');
+          // Still show raw response if available
+          if (data.description) {
+            setRawResponse(data.description);
+          }
+        }
       } else {
-        setError('No description received from API');
+        // Log the full response for debugging
+        console.error('Unexpected API response format:', data);
+        console.error('Full response object:', JSON.stringify(data, null, 2));
+        
+        // If we have a description but couldn't parse it, show it as raw
+        if (data.description && !rawResponse) {
+          setRawResponse(data.description);
+          setError('Could not parse character data from API response. Raw response displayed below. Check console for details.');
+        } else {
+          setError(`No character data received from API. Response keys: ${Object.keys(data).join(', ')}. Check console for full response.`);
+        }
       }
     } catch (err: any) {
       setError(`Failed to analyze image: ${err.message || 'Unknown error'}`);
@@ -251,16 +336,19 @@ function CameraCapture({ apiUrl }: CameraCaptureProps) {
               disabled={isAnalyzing}
               className="btn btn-primary analyze-btn"
             >
-              {isAnalyzing ? 'Analyzing...' : 'Analyze with Claude'}
+              {isAnalyzing ? 'Analyzing Character...' : 'Analyze Character Lore'}
             </button>
           </div>
         )}
 
-        {description && (
+        {characterData && (
+          <CharacterLoreDisplay characterData={characterData} />
+        )}
+        {rawResponse && (
           <div className="description-container">
-            <h3>Image Description</h3>
+            <h3>Raw Response</h3>
             <div className="description-text">
-              {description}
+              {rawResponse}
             </div>
           </div>
         )}
