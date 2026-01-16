@@ -1,4 +1,69 @@
-# React + TypeScript + Vite
+# ClayQuest - Camera Capture & Image Recognition
+
+A React application with camera capture functionality and Claude AI image recognition.
+
+## Features
+
+- 📷 Web camera access and photo capture
+- ⌨️ Space key hotkey for quick capture
+- 🤖 Claude AI image description via secure backend API
+- 🔒 Secure API key handling (server-side only)
+
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure API Key
+
+Create a `.env` file in the root directory:
+
+```env
+ANTHROPIC_API_KEY=your_api_key_here
+```
+
+Get your API key from: https://console.anthropic.com/
+
+### 3. Run the Application
+
+**Option 1: Run both frontend and backend together (recommended)**
+```bash
+npm run dev:all
+```
+
+**Option 2: Run separately**
+
+Terminal 1 (Backend):
+```bash
+npm run server
+```
+
+Terminal 2 (Frontend):
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173` (or the port Vite assigns)
+The backend API will be available at `http://localhost:3001`
+
+## Architecture
+
+- **Frontend**: React + TypeScript + Vite
+- **Backend**: Express.js server that proxies requests to Anthropic API
+- **Security**: API key is stored server-side only, never exposed to the browser
+
+## Usage
+
+1. Click "Open Camera" to start your webcam
+2. Click "Capture Photo" or press **Space** to take a photo
+3. Click "Analyze with Claude" to get an AI description of the image
+
+---
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
