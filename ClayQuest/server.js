@@ -65,9 +65,11 @@ app.post('/api/analyze-image', async (req, res) => {
                 },
                 {
                   type: 'text',
-                  text: `You are analyzing an air-dry clay object made by a child, ideally on a clean background. Analyze this clay creation and provide character lore information in JSON format.
+                  text: `You are analyzing an air-dry clay object made by a child, ideally on a clean background. Analyze this clay creation and provide character lore information.
 
-Please analyze the image and return a JSON object with the following structure:
+CRITICAL: You must respond with ONLY a valid JSON object. Do not include any markdown code blocks, explanations, or additional text. Start your response with { and end with }.
+
+Return a JSON object with this exact structure:
 {
   "name": "A creative character name based on the object",
   "color": "Primary colors observed (e.g., 'bright red and blue', 'pastel pink')",
@@ -76,7 +78,9 @@ Please analyze the image and return a JSON object with the following structure:
   "tone": "The voice/tone this character should have (e.g., 'playful and energetic', 'gentle and shy', 'bold and adventurous')"
 }
 
-Focus on the unique characteristics that make this clay creation special. The character traits should reflect the personality that emerges from the object's appearance. Return ONLY valid JSON, no additional text.`,
+Focus on the unique characteristics that make this clay creation special. The character traits should reflect the personality that emerges from the object's appearance.
+
+Remember: Return ONLY the JSON object, nothing else.`,
                 },
               ],
             },
@@ -105,46 +109,100 @@ Focus on the unique characteristics that make this clay creation special. The ch
     if (textContent && textContent.type === 'text') {
       console.log('Claude response text (first 500 chars):', textContent.text.substring(0, 500));
       
-      try {
-        let jsonText = textContent.text.trim();
+      // Function to extract JSON from text, handling nested objects
+      const extractJSON = (text) => {
+        let jsonText = text.trim();
         
         // Remove markdown code blocks if present
         jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
         
-        // Try to find JSON object in the text (in case there's extra text)
+        // Find the first { and try to match it with the corresponding }
+        let startIndex = jsonText.indexOf('{');
+        if (startIndex === -1) {
+          return null;
+        }
+        
+        let braceCount = 0;
+        let inString = false;
+        let escapeNext = false;
+        
+        for (let i = startIndex; i < jsonText.length; i++) {
+          const char = jsonText[i];
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"' && !escapeNext) {
+            inString = !inString;
+            continue;
+          }
+          
+          if (!inString) {
+            if (char === '{') {
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                // Found matching closing brace
+                const jsonCandidate = jsonText.substring(startIndex, i + 1);
+                try {
+                  return JSON.parse(jsonCandidate);
+                } catch (e) {
+                  // Not valid JSON, continue searching
+                }
+              }
+            }
+          }
+        }
+        
+        return null;
+      };
+      
+      try {
+        // Try direct parsing first
+        let jsonText = textContent.text.trim();
+        jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        
+        try {
+          const characterData = JSON.parse(jsonText);
+          console.log('Successfully parsed character data (direct):', characterData);
+          res.json({ characterData });
+          return;
+        } catch (directError) {
+          console.log('Direct parse failed, trying extraction method...');
+        }
+        
+        // Try extraction method
+        const extracted = extractJSON(textContent.text);
+        if (extracted) {
+          console.log('Successfully extracted and parsed character data:', extracted);
+          res.json({ characterData: extracted });
+          return;
+        }
+        
+        // Try regex as fallback
         const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          console.log('Found JSON match, attempting to parse...');
           const characterData = JSON.parse(jsonMatch[0]);
-          console.log('Successfully parsed character data:', characterData);
+          console.log('Successfully parsed character data (regex):', characterData);
           res.json({ characterData });
-        } else {
-          // Try parsing the whole text
-          console.log('No JSON match, trying to parse entire text as JSON...');
-          const characterData = JSON.parse(jsonText);
-          console.log('Successfully parsed character data:', characterData);
-          res.json({ characterData });
+          return;
         }
+        
+        throw new Error('Could not find valid JSON in response');
       } catch (parseError) {
         // If parsing fails, return the raw text (fallback)
         console.error('Failed to parse JSON response:', parseError.message);
         console.error('Raw response text (first 1000 chars):', textContent.text.substring(0, 1000));
         console.error('Full response text length:', textContent.text.length);
-        
-        // Try one more time with a more aggressive JSON extraction
-        try {
-          // Look for JSON that might be embedded in text
-          const aggressiveMatch = textContent.text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-          if (aggressiveMatch) {
-            console.log('Found JSON with aggressive matching, attempting to parse...');
-            const characterData = JSON.parse(aggressiveMatch[0]);
-            console.log('Successfully parsed with aggressive matching:', characterData);
-            res.json({ characterData });
-            return;
-          }
-        } catch (secondTryError) {
-          console.error('Aggressive matching also failed:', secondTryError.message);
-        }
+        console.error('Full response:', textContent.text);
         
         res.json({ 
           characterData: null,

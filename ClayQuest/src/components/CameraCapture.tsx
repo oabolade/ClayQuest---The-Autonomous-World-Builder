@@ -151,26 +151,91 @@ function CameraCapture({ apiUrl }: CameraCaptureProps) {
       // Method 3: Try description field (legacy or fallback)
       else if (data.description) {
         console.log('Attempting to parse description field:', data.description.substring(0, 200));
-        try {
-          let jsonText = data.description.trim();
-          // Remove markdown code blocks if present
+        
+        // Robust JSON extraction function
+        const extractJSON = (text: string) => {
+          let jsonText = text.trim();
           jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
           
-          // Try to find JSON object in the text (handles cases with extra text)
-          const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            console.log('Found JSON match, attempting to parse...');
-            extractedData = JSON.parse(jsonMatch[0]);
-            console.log('Successfully parsed character data:', extractedData);
-          } else {
-            // Try parsing the whole text as JSON
-            console.log('No JSON match found, trying to parse entire text as JSON...');
+          // Find the first { and try to match it with the corresponding }
+          let startIndex = jsonText.indexOf('{');
+          if (startIndex === -1) {
+            return null;
+          }
+          
+          let braceCount = 0;
+          let inString = false;
+          let escapeNext = false;
+          
+          for (let i = startIndex; i < jsonText.length; i++) {
+            const char = jsonText[i];
+            
+            if (escapeNext) {
+              escapeNext = false;
+              continue;
+            }
+            
+            if (char === '\\') {
+              escapeNext = true;
+              continue;
+            }
+            
+            if (char === '"' && !escapeNext) {
+              inString = !inString;
+              continue;
+            }
+            
+            if (!inString) {
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  // Found matching closing brace
+                  const jsonCandidate = jsonText.substring(startIndex, i + 1);
+                  try {
+                    return JSON.parse(jsonCandidate);
+                  } catch (e) {
+                    // Not valid JSON, continue searching
+                    return null;
+                  }
+                }
+              }
+            }
+          }
+          
+          return null;
+        };
+        
+        try {
+          // Try direct parsing first
+          let jsonText = data.description.trim();
+          jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+          
+          try {
             extractedData = JSON.parse(jsonText);
-            console.log('Successfully parsed character data:', extractedData);
+            console.log('Successfully parsed character data (direct):', extractedData);
+          } catch (directError) {
+            // Try extraction method
+            const extracted = extractJSON(data.description);
+            if (extracted) {
+              extractedData = extracted;
+              console.log('Successfully extracted and parsed character data:', extractedData);
+            } else {
+              // Try regex as fallback
+              const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                extractedData = JSON.parse(jsonMatch[0]);
+                console.log('Successfully parsed character data (regex):', extractedData);
+              } else {
+                throw new Error('Could not find valid JSON in description');
+              }
+            }
           }
         } catch (err) {
           console.error('Failed to parse description as JSON:', err);
-          console.error('Description content:', data.description);
+          console.error('Description content (first 500 chars):', data.description.substring(0, 500));
+          console.error('Full description:', data.description);
           // Don't set error here, let it fall through to show raw response
           setRawResponse(data.description);
         }
