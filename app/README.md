@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClayQuest - The Autonomous World Builder
+
+Transform your clay creations into magical audio picture books with AI.
+
+## Features
+
+- **Camera Capture**: Take photos of clay creations directly in the browser
+- **AI Story Generation**: Claude Sonnet 4 analyzes the image and creates a 4-page children's story
+- **AI Image Generation**: Google Imagen 4.0 creates beautiful illustrations for each page
+- **Voice Narration**: ElevenLabs generates warm, storytelling voices (with Web Speech API fallback)
+- **Picture Book Viewer**: Swipe through pages with auto-playing narration
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Frontend | Next.js 16, React, TypeScript, Tailwind CSS |
+| Story Generation | Claude Sonnet 4 (Anthropic) |
+| Image Generation | Imagen 4.0 (Google) |
+| Voice Narration | ElevenLabs / Web Speech API |
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in your API keys:
+
+```bash
+cp .env.example .env.local
+```
+
+Required keys:
+- `ANTHROPIC_API_KEY` - Get from [Anthropic Console](https://console.anthropic.com/)
+- `GEMINI_API_KEY` - Get from [Google AI Studio](https://aistudio.google.com/)
+- `ELEVENLABS_API_KEY` - Get from [ElevenLabs](https://elevenlabs.io/) (optional)
+
+### 3. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Voice Options
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Configure `ELEVENLABS_VOICE_ID` in `.env.local`:
 
-## Learn More
+| Voice | ID | Description |
+|-------|-----|-------------|
+| George (default) | `JBFqnCBsd6RMkjVDRZzb` | Warm, captivating storyteller |
+| Alice | `Xb7hH8MSUJpSbSDYk0k2` | Clear, engaging educator |
+| Jessica | `cgSgspJ2msm6clMCkdW9` | Playful, bright, warm |
+| Sarah | `EXAVITQu4vr4xnSDxMaL` | Mature, reassuring, confident |
+| Father Christmas | `1wg2wOjdEWKA7yQD8Kca` | Festive storyteller |
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── generate/route.ts   # Story generation API
+│   │   └── tts/route.ts        # Text-to-speech API
+│   ├── page.tsx
+│   └── globals.css
+├── components/
+│   ├── ClayQuestApp.tsx        # Main app with state management
+│   ├── WelcomeScreen.tsx       # Landing page
+│   ├── CaptureScreen.tsx       # Camera capture
+│   ├── LoadingScreen.tsx       # Generation progress
+│   └── PictureBookViewer.tsx   # Story viewer with audio
+├── lib/
+│   └── ai.ts                   # AI service integrations
+└── types/
+    └── index.ts                # TypeScript types
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## User Flow
 
-## Deploy on Vercel
+1. **Welcome** - Click "Start Adventure"
+2. **Capture** - Take a photo of your clay creation
+3. **Generate** - AI creates story, images, and audio (~30-60s)
+4. **Enjoy** - Read/listen to your personalized picture book
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*Built at Agentic Orchestration Hack - January 16, 2026*

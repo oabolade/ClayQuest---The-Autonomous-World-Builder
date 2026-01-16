@@ -39,3 +39,7 @@ coverage/
 
 # Misc
 *.pem
+
+# Temp audio files
+temp/
+app/temp/
