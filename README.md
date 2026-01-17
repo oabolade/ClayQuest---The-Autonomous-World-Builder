@@ -55,9 +55,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Team
 
-- **oabolade** - Team Lead
-- **RogerHao** - Frontend & UI Development
-- (Add other team members)
+- **Olasile Abolade** - Team and Product Lead
+- **Roger Hao** - Backend and Software Engineer
+- **Xiao He** - Artist and Frontend
 
 ## Documentation
 
