@@ -1,10 +1,20 @@
 # ClayQuest - The Autonomous World Builder
 
-An AI-powered agent that autonomously generates imaginative 3D landscapes from natural language descriptions.
+ClayQuest is an autonomous AI-powered "Creative Content Studio" that bridges the gap between physical play and digital storytelling. Built for the 2026 AI Agent Hackathon, ClayQuest uses a persistent, self-improving "Creative Director" agent to observe physical clay sculptures via computer vision, research their cultural context autonomously, and produce a high-fidelity, narrated digital world in real-time.
 
-## Project Overview
+Unlike traditional reactive apps, ClayQuest operates on an Observe-Think-Act loop. It doesn't just wait for prompts—it continuously monitors the user’s physical workspace, recognizes new artistic elements, and orchestrates a multi-tool production pipeline to evolve the narrative without human intervention.
 
-ClayQuest enables users to describe their dream worlds in plain text and watch as AI agents collaboratively build them in real-time. The system uses a multi-agent architecture to interpret descriptions, generate landscapes, and render 3D visualizations.
+## 🚀 The Core "Creative Director" Agent
+
+- At the heart of ClayQuest is an autonomous agentic system powered by Anthropic Claude 3.5. This agent acts as a persistent entity with the following cognitive layers:
+
+- 👀 Real-World Observation: Uses Computer Use to "see" clay sculptures, identifying character archetypes, colors, and spatial arrangements.
+
+- 🔍 Autonomous Scouting: Queries Macroscope and Tonic Fabricate to ground the story in historical lore and verified cultural data.
+
+- ✍️ Creative Orchestration: Manages a production crew of specialized sub-agents for scriptwriting, voice design, and environment art.
+
+- 📈 Self-Improving Memory: Leverages Yutori to maintain a persistent "World Lore" database, ensuring the story improves and adapts as the child continues to sculpt.
 
 ## Quick Start
 
