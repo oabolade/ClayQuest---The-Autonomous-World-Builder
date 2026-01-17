@@ -128,34 +128,47 @@ export function PictureBookViewer({ story, onNewStory }: PictureBookViewerProps)
     []
   );
 
-  // Preload all audio files on mount
+  // Preload all audio files on mount (2+2 batching to avoid ElevenLabs 429)
   useEffect(() => {
     const preloadAllAudio = async () => {
       setPreloadStatus("loading");
-      console.log("[Audio] Starting preload for", totalPanels, "panels");
+      console.log("[Audio] Starting preload for", totalPanels, "panels (2+2 batch mode)");
 
-      const preloadPromises = story.pages.slice(0, totalPanels).map(async (page, index) => {
-        try {
-          const url = await fetchAudioUrl(page.text, index);
-          if (url) {
-            // Preload the actual audio file into browser cache
-            const audio = new Audio();
-            audio.preload = "auto";
-            audio.src = url;
-            console.log("[Audio] Preloaded panel", index, ":", url);
+      const pages = story.pages.slice(0, totalPanels);
+
+      const preloadBatch = async (startIndex: number, endIndex: number) => {
+        const batchPromises = pages.slice(startIndex, endIndex).map(async (page, i) => {
+          const index = startIndex + i;
+          try {
+            const url = await fetchAudioUrl(page.text, index);
+            if (url) {
+              const audio = new Audio();
+              audio.preload = "auto";
+              audio.src = url;
+              console.log("[Audio] Preloaded panel", index, ":", url);
+            }
+            return { index, success: !!url };
+          } catch (err) {
+            console.error("[Audio] Failed to preload panel", index, err);
+            return { index, success: false };
           }
-          return { index, success: !!url };
-        } catch (err) {
-          console.error("[Audio] Failed to preload panel", index, err);
-          return { index, success: false };
-        }
-      });
+        });
+        return Promise.all(batchPromises);
+      };
 
-      // Wait for all with timeout
+      // Batch 1: panels 0-1
       await Promise.race([
-        Promise.all(preloadPromises),
-        new Promise((resolve) => setTimeout(resolve, CONFIG.PRELOAD_TIMEOUT)),
+        preloadBatch(0, 2),
+        new Promise((resolve) => setTimeout(resolve, CONFIG.PRELOAD_TIMEOUT / 2)),
       ]);
+
+      // Batch 2: panels 2-3
+      if (totalPanels > 2) {
+        await Promise.race([
+          preloadBatch(2, totalPanels),
+          new Promise((resolve) => setTimeout(resolve, CONFIG.PRELOAD_TIMEOUT / 2)),
+        ]);
+      }
 
       setPreloadStatus("ready");
       console.log("[Audio] Preload complete");
